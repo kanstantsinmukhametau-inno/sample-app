@@ -24,7 +24,7 @@ describe('Admin user lifecycle (e2e)', () => {
     const email = `trainer-${Date.now()}@example.com`;
 
     const createResponse = await request(app.getHttpServer())
-      .post('/admin/users')
+      .post('/api/admin/users')
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .send({
         businessName: 'Acme Academy',
@@ -36,21 +36,21 @@ describe('Admin user lifecycle (e2e)', () => {
     const trainerId = (createResponse.body as { id: string }).id;
 
     await request(app.getHttpServer())
-      .post(`/admin/users/${trainerId}/deactivate`)
+      .post(`/api/admin/users/${trainerId}/deactivate`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
     let user = await prisma.user.findUnique({ where: { id: trainerId } });
     expect(user?.status).toBe('INACTIVE');
 
     await request(app.getHttpServer())
-      .post(`/admin/users/${trainerId}/reactivate`)
+      .post(`/api/admin/users/${trainerId}/reactivate`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
     user = await prisma.user.findUnique({ where: { id: trainerId } });
     expect(user?.status).toBe('ACTIVE');
 
     await request(app.getHttpServer())
-      .post(`/admin/users/${trainerId}/delete`)
+      .post(`/api/admin/users/${trainerId}/delete`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .send({ reason: 'GDPR request' })
       .expect(200);
@@ -72,7 +72,7 @@ describe('Admin user lifecycle (e2e)', () => {
 
     // Deletion is permanent — deactivate/reactivate on a DELETED user must fail.
     await request(app.getHttpServer())
-      .post(`/admin/users/${trainerId}/deactivate`)
+      .post(`/api/admin/users/${trainerId}/deactivate`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(409);
   });
@@ -80,7 +80,7 @@ describe('Admin user lifecycle (e2e)', () => {
   it('should reject a non-Super-Admin from hitting admin endpoints', async () => {
     const trainer = await seedUser(app, { role: Role.TRAINER });
     await request(app.getHttpServer())
-      .get('/admin/users')
+      .get('/api/admin/users')
       .set('Authorization', `Bearer ${trainer.accessToken}`)
       .expect(403);
   });

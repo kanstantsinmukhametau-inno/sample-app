@@ -47,7 +47,7 @@ describe('User list pagination at scale (e2e, NFR-002)', () => {
 
     const start = Date.now();
     const response = await request(app.getHttpServer())
-      .get('/admin/users')
+      .get('/api/admin/users')
       .query({ page: 1, pageSize: 20 })
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);

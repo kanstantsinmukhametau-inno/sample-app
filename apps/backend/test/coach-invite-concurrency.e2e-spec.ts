@@ -42,11 +42,11 @@ describe('Coach invite — single-trainer constraint under concurrency (e2e)', (
 
     const [resultA, resultB] = await Promise.allSettled([
       request(app.getHttpServer())
-        .post(`/join/${linkB.code}/accept-coach`)
+        .post(`/api/join/${linkB.code}/accept-coach`)
         .set('Authorization', `Bearer ${coach.accessToken}`)
         .send({}),
       request(app.getHttpServer())
-        .post(`/join/${linkB.code}/accept-coach`)
+        .post(`/api/join/${linkB.code}/accept-coach`)
         .set('Authorization', `Bearer ${coach.accessToken}`)
         .send({}),
     ]);
@@ -104,10 +104,10 @@ describe('Coach invite — single-trainer constraint under concurrency (e2e)', (
 
     const [resultA, resultB] = await Promise.allSettled([
       request(app.getHttpServer())
-        .post(`/join/${linkA.code}/accept-coach`)
+        .post(`/api/join/${linkA.code}/accept-coach`)
         .send(payload),
       request(app.getHttpServer())
-        .post(`/join/${linkB.code}/accept-coach`)
+        .post(`/api/join/${linkB.code}/accept-coach`)
         .send(payload),
     ]);
 

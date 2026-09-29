@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { HealthController } from './health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { AvailabilityModule } from './modules/availability/availability.module';
 import { BrandingModule } from './modules/branding/branding.module';
@@ -41,7 +42,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     BrandingModule,
     CampConversionModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [
     AppService,
     // Guard chain order matters: JwtAuthGuard populates req.user first,

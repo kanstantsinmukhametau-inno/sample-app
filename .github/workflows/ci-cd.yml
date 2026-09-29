@@ -1,0 +1,195 @@
+name: CI/CD
+
+# Pull requests: lint, unit tests, e2e, build, SAST.
+# Pushes to main: the same gates, then image build → Trivy → GHCR push → deploy to the lab
+# k3s cluster through the self-hosted runner (label `lab`, on nginx-vm).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Backend lint (eslint, no --fix)
+        working-directory: apps/backend
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+      - name: Frontend lint (oxlint)
+        run: npm run lint:frontend
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Backend unit tests
+        run: npm run test:backend
+      - name: Frontend unit tests
+        run: npm run test:frontend
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: e2e
+          POSTGRES_PASSWORD: e2e
+          POSTGRES_DB: e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U e2e -d e2e"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Throwaway CI database and a test-only signing secret; not real credentials.
+      DATABASE_URL: postgresql://e2e:e2e@localhost:5432/e2e?schema=public
+      JWT_ACCESS_SECRET: e2e-test-jwt-access-secret
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Apply migrations
+        working-directory: apps/backend
+        run: npx prisma migrate deploy
+      - name: Backend e2e tests
+        run: npm run test:e2e --workspace apps/backend
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: Build backend
+        run: npm run build:backend
+      - name: Build frontend
+        run: npm run build:frontend
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Semgrep (code)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.178.0 \
+            semgrep scan --config p/typescript --config p/nodejs --metrics=off --error \
+              --exclude node_modules --exclude 'apps/*/dist' --exclude apps/backend/generated \
+              apps
+      # Source-level dependency gate for both workspaces (the frontend ships as a bundle, so
+      # the image scan cannot see its dependencies). Uses the same scoped, expiring
+      # exceptions as the image scan.
+      - name: Trivy (dependencies, package-lock.json)
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+        with:
+          scan-type: fs
+          scan-ref: package-lock.json
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
+          exit-code: "1"
+          format: table
+
+  image:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test, e2e, build, sast]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Image name (GHCR needs lowercase)
+        id: ref
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/sample-app" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build (local, for scanning)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.ref.outputs.image }}:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy (image) — fail on fixable HIGH/CRITICAL
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+        with:
+          image-ref: ${{ steps.ref.outputs.image }}:scan
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
+          exit-code: "1"
+          format: table
+          output: trivy-image.txt
+
+      - name: Trivy report
+        if: always()
+        run: cat trivy-image.txt 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: trivy-image-report
+          path: trivy-image.txt
+          if-no-files-found: ignore
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Push exactly the image Trivy scanned (not a rebuild), then record its digest.
+      - name: Push the scanned image to GHCR
+        id: push
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+        run: |
+          docker tag "$IMAGE:scan" "$IMAGE:$GITHUB_SHA"
+          docker tag "$IMAGE:scan" "$IMAGE:latest"
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$GITHUB_SHA" | cut -d@ -f2)"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Pushed $IMAGE@$digest" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: image
+    runs-on: [self-hosted, lab]
+    environment:
+      name: lab
+      url: https://sample-app.lab.test
+    concurrency:
+      group: deploy-lab
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Deploy as a Knative Service (kn service apply)
+        env:
+          # Pin the exact pushed image: the tag can move, the digest cannot.
+          IMAGE: ${{ needs.image.outputs.image }}@${{ needs.image.outputs.digest }}
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: ./deploy/deploy.sh

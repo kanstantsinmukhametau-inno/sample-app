@@ -41,7 +41,7 @@ describe('POST /profile/me/photo (e2e)', () => {
       .toBuffer();
 
     const uploadResponse = await request(app.getHttpServer())
-      .post('/profile/me/photo')
+      .post('/api/profile/me/photo')
       .set('Cookie', `access_token=${user.accessToken}`)
       .attach('photo', png, 'photo.png')
       .expect(200);

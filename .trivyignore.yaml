@@ -1,0 +1,12 @@
+# Accepted findings for the image scan in .github/workflows. Every entry is scoped to one
+# package version and expires, so it is re-reviewed instead of silently outliving the fix.
+vulnerabilities:
+  - id: CVE-2026-40345
+    purls:
+      - pkg:npm/deepmerge-ts@7.1.5
+    statement: >-
+      Pulled in only by the Prisma CLI's config loader (prisma -> @prisma/config), which runs
+      in the one-off migration Job; the API server uses the generated client and never loads
+      it. Prisma 6.19.3 is the latest 6.x and pins deepmerge-ts 7.x; the fix (8.x) needs the
+      Prisma 7 upgrade. Accepted 2026-09-29 (TASK-001).
+    expired_at: 2026-12-31

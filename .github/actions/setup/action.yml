@@ -1,0 +1,25 @@
+name: Set up workspace
+description: Node 22, root `npm ci`, and the Prisma client (with the Linux ".ts" import fix)
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci --no-audit --no-fund
+
+    # Same steps as apps/backend/Dockerfile.dev: prisma.config.ts requires DATABASE_URL even
+    # though `generate` never connects, and Prisma 6.19.3 emits ".ts" relative imports on
+    # Linux that fail at runtime.
+    - name: Generate Prisma client
+      shell: bash
+      working-directory: apps/backend
+      run: |
+        DATABASE_URL="${DATABASE_URL:-postgresql://build:build@localhost:5432/build}" npx prisma generate
+        find generated/prisma -type f -name '*.ts' ! -name '*.d.ts' -print0 \
+          | xargs -0 sed -i -E "s/(from [\"'])([^\"']+)\.ts([\"'])/\1\2.js\3/g"

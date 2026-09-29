@@ -24,7 +24,7 @@ describe('Auth (e2e)', () => {
       const responses = [];
       for (let attempt = 0; attempt < 6; attempt += 1) {
         const response = await request(app.getHttpServer())
-          .post('/auth/login')
+          .post('/api/auth/login')
           .send(credentials);
         responses.push(response.status);
       }
@@ -39,7 +39,7 @@ describe('Auth (e2e)', () => {
   describe('ValidationPipe error contract (spec error catalog)', () => {
     it('should return errorCode VALIDATION_ERROR with field-level details for a malformed register body', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/auth/register')
         .send({
           email: 'not-an-email',
           password: 'short',
@@ -68,7 +68,7 @@ describe('Auth (e2e)', () => {
       // /auth/register (not /auth/login) — the login throttle test above
       // already exhausts /auth/login's 5-per-60s quota for this suite run.
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/auth/register')
         .send({
           email: 'whitelist-test@example.com',
           password: 'Passw0rd!',

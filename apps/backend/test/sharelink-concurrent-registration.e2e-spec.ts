@@ -36,7 +36,7 @@ describe('Concurrent ShareLink registration (e2e, NFR-004)', () => {
     const responses = await Promise.all(
       Array.from({ length: CONCURRENT_REGISTRATIONS }, (_, i) =>
         request(app.getHttpServer())
-          .post(`/join/${link.code}/register`)
+          .post(`/api/join/${link.code}/register`)
           .send({
             email: `concurrent-${i}-${Date.now()}@example.com`,
             password: 'Passw0rd!',
