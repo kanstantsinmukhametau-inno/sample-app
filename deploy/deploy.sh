@@ -7,6 +7,7 @@
 #   GHCR_PULL_TOKEN  read:packages token for the pull secret  (skip secret if unset)
 #   NAMESPACE        default: apps        SERVICE  default: sample-app
 #   DOMAIN           default: lab.test    RUN_ID   default: epoch seconds
+#   PULL_TIMEOUT     seconds for steps that may cold-pull the image   default: 900
 set -euo pipefail
 
 : "${IMAGE:?IMAGE is required}"
@@ -14,6 +15,10 @@ NAMESPACE="${NAMESPACE:-apps}"
 SERVICE="${SERVICE:-sample-app}"
 DOMAIN="${DOMAIN:-lab.test}"
 RUN_ID="${RUN_ID:-$(date +%s)}"
+# The image is large (~830 MB) and every node pulls it cold once; on the lab host's
+# uplink one pull took over 7 minutes (TASK-001, first real deploy). Every wait that
+# can include a pull gets this budget, and so does the revision's progress deadline.
+PULL_TIMEOUT="${PULL_TIMEOUT:-900}"
 PULL_SECRET_ARGS=()
 PULL_SECRETS_YAML="[]"
 
@@ -34,6 +39,17 @@ if [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
   PULL_SECRETS_YAML="[{ name: ghcr-pull }]"
   echo "::endgroup::"
 fi
+
+# Pod state + events explain a stuck pull; they come from the API server, so they work
+# even when `kubectl logs` cannot reach the node's kubelet.
+diagnose() {
+  kubectl -n "$NAMESPACE" get pods -l "$1" -o wide || true
+  local pod
+  for pod in $(kubectl -n "$NAMESPACE" get pods -l "$1" -o name 2>/dev/null); do
+    kubectl -n "$NAMESPACE" get events --field-selector "involvedObject.name=${pod#pod/}" \
+      --sort-by=.lastTimestamp | tail -n 8 || true
+  done
+}
 
 echo "::group::Database migrations"
 job="${SERVICE}-migrate-${RUN_ID}"
@@ -58,7 +74,8 @@ spec:
           command: [/app/node_modules/.bin/prisma, migrate, deploy]
           envFrom: [{ secretRef: { name: ${SERVICE}-env } }]
 EOF
-if ! kubectl -n "$NAMESPACE" wait --for=condition=complete "job/${job}" --timeout=300s; then
+if ! kubectl -n "$NAMESPACE" wait --for=condition=complete "job/${job}" --timeout="${PULL_TIMEOUT}s"; then
+  diagnose "job-name=${job}"
   kubectl -n "$NAMESPACE" logs "job/${job}" --all-containers || true
   echo "::error::migration job ${job} did not complete"
   exit 1
@@ -76,12 +93,13 @@ kn service apply "$SERVICE" -n "$NAMESPACE" \
   --env "FRONTEND_URL=https://${SERVICE}.${DOMAIN}" \
   --probe-readiness "http:::/api/health" \
   --scale-min 0 \
-  --wait-timeout 300
+  --annotation-revision "serving.knative.dev/progress-deadline=${PULL_TIMEOUT}s" \
+  --wait-timeout "$PULL_TIMEOUT"
 # `kn service apply` returns success on "No changes to apply" even when the current
 # revision is not Ready, so readiness is asserted separately.
-if ! kubectl -n "$NAMESPACE" wait "ksvc/${SERVICE}" --for=condition=Ready --timeout=300s; then
+if ! kubectl -n "$NAMESPACE" wait "ksvc/${SERVICE}" --for=condition=Ready --timeout="${PULL_TIMEOUT}s"; then
   kn service describe "$SERVICE" -n "$NAMESPACE" || true
-  kubectl -n "$NAMESPACE" get pods -l "serving.knative.dev/service=${SERVICE}" || true
+  diagnose "serving.knative.dev/service=${SERVICE}"
   echo "::error::Knative Service ${SERVICE} is not Ready"
   exit 1
 fi
