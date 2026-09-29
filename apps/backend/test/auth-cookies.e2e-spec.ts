@@ -40,7 +40,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
     });
 
     const response = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ email, password: 'Passw0rd!' })
       .expect(200);
 
@@ -69,7 +69,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
     const user = await seedUser(app, { role: Role.PLAYER });
 
     const meResponse = await request(app.getHttpServer())
-      .get('/auth/me')
+      .get('/api/auth/me')
       .set('Cookie', [`access_token=${user.accessToken}`])
       .expect(200);
 
@@ -80,7 +80,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
     const user = await seedUser(app, { role: Role.PLAYER });
 
     const refreshResponse = await request(app.getHttpServer())
-      .post('/auth/refresh')
+      .post('/api/auth/refresh')
       .set('Cookie', [`refresh_token=${user.refreshToken}`])
       .send({})
       .expect(200);
@@ -101,7 +101,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
     expect(newAccessCookie).toBeDefined();
 
     const meResponse = await request(app.getHttpServer())
-      .get('/auth/me')
+      .get('/api/auth/me')
       .set('Cookie', [newAccessCookie as string])
       .expect(200);
     expect((meResponse.body as { email: string }).email).toBe(user.email);
@@ -109,7 +109,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
 
   it('should reject refresh with a 401-class error when neither body nor cookies carry a refresh token', async () => {
     await request(app.getHttpServer())
-      .post('/auth/refresh')
+      .post('/api/auth/refresh')
       .send({})
       .expect(401);
   });
@@ -118,7 +118,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
     const user = await seedUser(app, { role: Role.PLAYER });
 
     const logoutResponse = await request(app.getHttpServer())
-      .post('/auth/logout')
+      .post('/api/auth/logout')
       .set('Cookie', [`refresh_token=${user.refreshToken}`])
       .send({})
       .expect(204);
@@ -137,7 +137,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
 
     // The revoked refresh token can no longer be used to refresh.
     await request(app.getHttpServer())
-      .post('/auth/refresh')
+      .post('/api/auth/refresh')
       .set('Cookie', [`refresh_token=${user.refreshToken}`])
       .send({})
       .expect(401);
@@ -148,7 +148,7 @@ describe('Auth httpOnly cookies (e2e)', () => {
       const user = await seedUser(app, { role: Role.PLAYER });
 
       const meResponse = await request(app.getHttpServer())
-        .get('/auth/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${user.accessToken}`)
         .expect(200);
 
@@ -170,13 +170,13 @@ describe('Auth httpOnly cookies (e2e)', () => {
       const user = await seedUser(app, { role: Role.PLAYER });
 
       await request(app.getHttpServer())
-        .get('/auth/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${user.accessToken}`)
         .expect(200);
     });
 
     it('should reject an unauthenticated request', async () => {
-      await request(app.getHttpServer()).get('/auth/me').expect(401);
+      await request(app.getHttpServer()).get('/api/auth/me').expect(401);
     });
   });
 });

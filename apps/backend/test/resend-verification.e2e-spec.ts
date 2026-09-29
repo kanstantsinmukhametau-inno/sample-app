@@ -26,7 +26,7 @@ describe('POST /auth/resend-verification (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .post('/auth/resend-verification')
+      .post('/api/auth/resend-verification')
       .send({ email: user.email })
       .expect(200);
 
@@ -38,7 +38,7 @@ describe('POST /auth/resend-verification (e2e)', () => {
 
   it('should return 200 for an unknown email — no enumeration signal', async () => {
     await request(app.getHttpServer())
-      .post('/auth/resend-verification')
+      .post('/api/auth/resend-verification')
       .send({ email: `nobody-${Date.now()}@example.com` })
       .expect(200);
   });
@@ -50,7 +50,7 @@ describe('POST /auth/resend-verification (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .post('/auth/resend-verification')
+      .post('/api/auth/resend-verification')
       .send({ email: user.email })
       .expect(200);
 

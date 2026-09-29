@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # The lab runner on nginx-vm (lab-ansible, role github_runner).
+  labels:
+    - lab

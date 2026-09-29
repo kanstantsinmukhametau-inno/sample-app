@@ -32,7 +32,7 @@ describe('ShareLink registration (e2e)', () => {
 
       const email = `new-${Date.now()}@example.com`;
       const response = await request(app.getHttpServer())
-        .post(`/join/${link.code}/register`)
+        .post(`/api/join/${link.code}/register`)
         .send({
           email,
           password: 'Passw0rd!',
@@ -69,7 +69,7 @@ describe('ShareLink registration (e2e)', () => {
       const existing = await seedUser(app, { role: Role.PLAYER });
 
       await request(app.getHttpServer())
-        .post(`/join/${link.code}/register`)
+        .post(`/api/join/${link.code}/register`)
         .send({
           email: existing.email,
           password: 'Passw0rd!',
@@ -100,7 +100,7 @@ describe('ShareLink registration (e2e)', () => {
       );
 
       await request(app.getHttpServer())
-        .post(`/join/${linkB.code}/register`)
+        .post(`/api/join/${linkB.code}/register`)
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({ associateMemberIds: ['self'] })
         .expect(201);
@@ -121,7 +121,7 @@ describe('ShareLink registration (e2e)', () => {
   describe('expired/exhausted/wrong-type links', () => {
     it('should reject an unknown code with 404', async () => {
       await request(app.getHttpServer())
-        .get('/join/does-not-exist')
+        .get('/api/join/does-not-exist')
         .expect(404);
     });
 
@@ -134,7 +134,7 @@ describe('ShareLink registration (e2e)', () => {
       );
 
       await request(app.getHttpServer())
-        .post(`/join/${coachLink.code}/register`)
+        .post(`/api/join/${coachLink.code}/register`)
         .send({
           email: `new-${Date.now()}@example.com`,
           password: 'Passw0rd!',

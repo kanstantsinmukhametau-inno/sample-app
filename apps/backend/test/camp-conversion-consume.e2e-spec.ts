@@ -34,7 +34,7 @@ describe('Camp-conversion draft consume-and-associate (e2e)', () => {
     });
 
     const response = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({
         email,
         password: 'Passw0rd!',
@@ -59,7 +59,7 @@ describe('Camp-conversion draft consume-and-associate (e2e)', () => {
 
     // The draft must now be invalidated — the GET-for-prefill lookup 404s.
     await request(app.getHttpServer())
-      .get(`/camp-conversion/draft/${draftToken}`)
+      .get(`/api/camp-conversion/draft/${draftToken}`)
       .expect(404);
   });
 
@@ -75,7 +75,7 @@ describe('Camp-conversion draft consume-and-associate (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({
         email: firstEmail,
         password: 'Passw0rd!',
@@ -86,7 +86,7 @@ describe('Camp-conversion draft consume-and-associate (e2e)', () => {
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({
         email: secondEmail,
         password: 'Passw0rd!',
@@ -115,7 +115,7 @@ describe('Camp-conversion draft consume-and-associate (e2e)', () => {
     const email = `no-draft-${Date.now()}@example.com`;
 
     await request(app.getHttpServer())
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({
         email,
         password: 'Passw0rd!',

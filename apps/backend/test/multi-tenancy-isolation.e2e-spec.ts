@@ -53,7 +53,7 @@ describe('Multi-tenancy isolation (e2e)', () => {
     });
 
     const rosterAsA = await request(app.getHttpServer())
-      .get('/trainer/roster')
+      .get('/api/trainer/roster')
       .set('Authorization', `Bearer ${trainerA.accessToken}`)
       .expect(200);
     const rosterAsABody = rosterAsA.body as {
@@ -64,7 +64,7 @@ describe('Multi-tenancy isolation (e2e)', () => {
 
     // Confirming B's own token DOES see it — proves the seed actually worked.
     const rosterAsB = await request(app.getHttpServer())
-      .get('/trainer/roster')
+      .get('/api/trainer/roster')
       .set('Authorization', `Bearer ${trainerB.accessToken}`)
       .expect(200);
     const rosterAsBBody = rosterAsB.body as {
@@ -101,7 +101,7 @@ describe('Multi-tenancy isolation (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .get(`/availability/player/${selfProfileB.id}`)
+      .get(`/api/availability/player/${selfProfileB.id}`)
       .set('Authorization', `Bearer ${trainerA.accessToken}`)
       .expect(404);
   });
@@ -119,7 +119,7 @@ describe('Multi-tenancy isolation (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .post(`/sharelinks/coach-invite/${linkBRow?.id}/resend`)
+      .post(`/api/sharelinks/coach-invite/${linkBRow?.id}/resend`)
       .set('Authorization', `Bearer ${trainerA.accessToken}`)
       .expect(404);
   });

@@ -49,7 +49,7 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     birthDate.setFullYear(birthDate.getFullYear() - 5);
 
     const response = await request(app.getHttpServer())
-      .post('/players/child')
+      .post('/api/players/child')
       .set('Authorization', `Bearer ${child.accessToken}`)
       .send({
         displayName: 'Sub Child',
@@ -72,7 +72,7 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     );
 
     await request(app.getHttpServer())
-      .post(`/players/${childProfileId}/trainers`)
+      .post(`/api/players/${childProfileId}/trainers`)
       .set('Authorization', `Bearer ${child.accessToken}`)
       .send({ shareLinkCode: link.code })
       .expect(403);
@@ -83,7 +83,7 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     const trainer = await seedUser(app, { role: Role.TRAINER });
 
     await request(app.getHttpServer())
-      .delete(`/players/${childProfileId}/trainers/${trainer.id}`)
+      .delete(`/api/players/${childProfileId}/trainers/${trainer.id}`)
       .set('Authorization', `Bearer ${child.accessToken}`)
       .expect(403);
   });
@@ -92,7 +92,7 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     const { child, childProfileId } = await createParentWithChildLogin();
 
     await request(app.getHttpServer())
-      .post(`/players/${childProfileId}/child-login`)
+      .post(`/api/players/${childProfileId}/child-login`)
       .set('Authorization', `Bearer ${child.accessToken}`)
       .send({ email: `sub-${Date.now()}@example.com`, password: 'Passw0rd!' })
       .expect(403);
@@ -107,7 +107,7 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     );
 
     await request(app.getHttpServer())
-      .post(`/players/${childProfileId}/trainers`)
+      .post(`/api/players/${childProfileId}/trainers`)
       .set('Authorization', `Bearer ${parent.accessToken}`)
       .send({ shareLinkCode: link.code })
       .expect(201);
@@ -117,12 +117,12 @@ describe('ChildAccountGuard route blocking (e2e)', () => {
     const { child } = await createParentWithChildLogin();
 
     await request(app.getHttpServer())
-      .get('/players')
+      .get('/api/players')
       .set('Authorization', `Bearer ${child.accessToken}`)
       .expect(200);
 
     await request(app.getHttpServer())
-      .patch('/profile/me')
+      .patch('/api/profile/me')
       .set('Authorization', `Bearer ${child.accessToken}`)
       .send({ firstName: 'Updated' })
       .expect(200);

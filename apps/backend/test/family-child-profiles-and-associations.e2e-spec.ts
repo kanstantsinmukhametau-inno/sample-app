@@ -42,7 +42,7 @@ describe('Family / child-profile associations (e2e)', () => {
       tooOld.setFullYear(tooOld.getFullYear() - 25);
 
       await request(app.getHttpServer())
-        .post('/players/child')
+        .post('/api/players/child')
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({
           displayName: 'Too Old',
@@ -60,7 +60,7 @@ describe('Family / child-profile associations (e2e)', () => {
         trainer.id,
       );
       await request(app.getHttpServer())
-        .post(`/join/${link.code}/register`)
+        .post(`/api/join/${link.code}/register`)
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({ associateMemberIds: ['self'] })
         .expect(201);
@@ -69,7 +69,7 @@ describe('Family / child-profile associations (e2e)', () => {
       childBirthDate.setFullYear(childBirthDate.getFullYear() - 10);
 
       const response = await request(app.getHttpServer())
-        .post('/players/child')
+        .post('/api/players/child')
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({
           displayName: 'Kid One',
@@ -97,7 +97,7 @@ describe('Family / child-profile associations (e2e)', () => {
       const childBirthDate = new Date();
       childBirthDate.setFullYear(childBirthDate.getFullYear() - 8);
       const createChildResponse = await request(app.getHttpServer())
-        .post('/players/child')
+        .post('/api/players/child')
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({
           displayName: 'Kid Two',
@@ -108,7 +108,7 @@ describe('Family / child-profile associations (e2e)', () => {
       const childId = (createChildResponse.body as { id: string }).id;
 
       await request(app.getHttpServer())
-        .post(`/players/${childId}/trainers`)
+        .post(`/api/players/${childId}/trainers`)
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .send({ shareLinkCode: link.code })
         .expect(201);
@@ -119,7 +119,7 @@ describe('Family / child-profile associations (e2e)', () => {
       expect(created?.status).toBe('ACTIVE');
 
       const removeResponse = await request(app.getHttpServer())
-        .delete(`/players/${childId}/trainers/${trainer.id}`)
+        .delete(`/api/players/${childId}/trainers/${trainer.id}`)
         .set('Authorization', `Bearer ${parent.accessToken}`)
         .expect(200);
       expect(
@@ -141,7 +141,7 @@ describe('Family / child-profile associations (e2e)', () => {
       const childBirthDate = new Date();
       childBirthDate.setFullYear(childBirthDate.getFullYear() - 8);
       const createChildResponse = await request(app.getHttpServer())
-        .post('/players/child')
+        .post('/api/players/child')
         .set('Authorization', `Bearer ${parentA.accessToken}`)
         .send({
           displayName: 'Kid Three',
@@ -152,7 +152,7 @@ describe('Family / child-profile associations (e2e)', () => {
       const childId = (createChildResponse.body as { id: string }).id;
 
       await request(app.getHttpServer())
-        .post(`/players/${childId}/trainers`)
+        .post(`/api/players/${childId}/trainers`)
         .set('Authorization', `Bearer ${parentB.accessToken}`)
         .send({ trainerId: trainer.id })
         .expect(404);

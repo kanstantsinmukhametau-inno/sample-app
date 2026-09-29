@@ -24,7 +24,7 @@ describe('Impersonation (e2e)', () => {
     const trainer = await seedUser(app, { role: Role.TRAINER });
 
     const startResponse = await request(app.getHttpServer())
-      .post(`/admin/impersonation/${trainer.id}/start`)
+      .post(`/api/admin/impersonation/${trainer.id}/start`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
 
@@ -39,7 +39,7 @@ describe('Impersonation (e2e)', () => {
     // The admin's OWN token still works unaffected — the dual-token handoff
     // never overwrote the admin's real session.
     await request(app.getHttpServer())
-      .get('/admin/impersonation/history')
+      .get('/api/admin/impersonation/history')
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
 
@@ -49,7 +49,7 @@ describe('Impersonation (e2e)', () => {
     expect(openLog?.endedAt).toBeNull();
 
     await request(app.getHttpServer())
-      .post('/admin/impersonation/exit')
+      .post('/api/admin/impersonation/exit')
       .set('Authorization', `Bearer ${impersonationAccessToken}`)
       .expect(204);
 
@@ -65,7 +65,7 @@ describe('Impersonation (e2e)', () => {
     const otherAdmin = await seedUser(app, { role: Role.SUPER_ADMIN });
 
     await request(app.getHttpServer())
-      .post(`/admin/impersonation/${otherAdmin.id}/start`)
+      .post(`/api/admin/impersonation/${otherAdmin.id}/start`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(403);
   });
@@ -76,7 +76,7 @@ describe('Impersonation (e2e)', () => {
       const trainer = await seedUser(app, { role: Role.TRAINER });
 
       const startResponse = await request(app.getHttpServer())
-        .post(`/admin/impersonation/${trainer.id}/start`)
+        .post(`/api/admin/impersonation/${trainer.id}/start`)
         .set('Authorization', `Bearer ${admin.accessToken}`)
         // Simulates the admin's browser already carrying its own session
         // cookie from an earlier login — start() must never overwrite it.
@@ -108,7 +108,7 @@ describe('Impersonation (e2e)', () => {
       const trainer = await seedUser(app, { role: Role.TRAINER });
 
       const startResponse = await request(app.getHttpServer())
-        .post(`/admin/impersonation/${trainer.id}/start`)
+        .post(`/api/admin/impersonation/${trainer.id}/start`)
         .set('Authorization', `Bearer ${admin.accessToken}`)
         .expect(200);
 
@@ -125,7 +125,7 @@ describe('Impersonation (e2e)', () => {
       const trainer = await seedUser(app, { role: Role.TRAINER });
 
       const startResponse = await request(app.getHttpServer())
-        .post(`/admin/impersonation/${trainer.id}/start`)
+        .post(`/api/admin/impersonation/${trainer.id}/start`)
         .set('Authorization', `Bearer ${admin.accessToken}`)
         .expect(200);
       const setCookie = startResponse.headers[
@@ -139,7 +139,7 @@ describe('Impersonation (e2e)', () => {
       // present at once (the realistic browser state) — the impersonation
       // cookie must win.
       const meWhileImpersonating = await request(app.getHttpServer())
-        .get('/auth/me')
+        .get('/api/auth/me')
         .set('Cookie', [
           `access_token=${admin.accessToken}`,
           impersonationAccessCookie,
@@ -153,7 +153,7 @@ describe('Impersonation (e2e)', () => {
       expect(impersonatedIdentity.impersonatedBy).toBe(admin.id);
 
       const exitResponse = await request(app.getHttpServer())
-        .post('/admin/impersonation/exit')
+        .post('/api/admin/impersonation/exit')
         .set('Cookie', [
           `access_token=${admin.accessToken}`,
           impersonationAccessCookie,
@@ -180,7 +180,7 @@ describe('Impersonation (e2e)', () => {
       // After exit, only the admin's original cookie remains — it still
       // authenticates as the admin, with no separate "restore" step.
       const meAfterExit = await request(app.getHttpServer())
-        .get('/auth/me')
+        .get('/api/auth/me')
         .set('Cookie', [`access_token=${admin.accessToken}`])
         .expect(200);
       const adminIdentity = meAfterExit.body as {
@@ -197,7 +197,7 @@ describe('Impersonation (e2e)', () => {
     const trainer = await seedUser(app, { role: Role.TRAINER });
 
     const startResponse = await request(app.getHttpServer())
-      .post(`/admin/impersonation/${trainer.id}/start`)
+      .post(`/api/admin/impersonation/${trainer.id}/start`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
     const impersonationRefreshToken = (
@@ -205,7 +205,7 @@ describe('Impersonation (e2e)', () => {
     ).refreshToken;
 
     await request(app.getHttpServer())
-      .post('/auth/logout')
+      .post('/api/auth/logout')
       .send({ refreshToken: impersonationRefreshToken })
       .expect(204);
 

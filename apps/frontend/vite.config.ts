@@ -12,10 +12,10 @@ export default defineConfig({
     host: '0.0.0.0',
     watch: { usePolling: true },
     proxy: {
+      // The backend mounts every route under /api itself, so the prefix is kept.
       '/api': {
         target: proxyTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/uploads': {
         target: proxyTarget,
